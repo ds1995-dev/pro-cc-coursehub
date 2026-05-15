@@ -41,7 +41,13 @@ class DatabaseSeeder extends Seeder
                 ]));
             }
 
-            $students = User::factory()->count(51)->student()->create();
+            $fixedStudent = User::factory()->student()->create([
+                'name' => '山田太郎',
+                'email' => 'student@coursehub.com',
+            ]);
+            $students = collect([$fixedStudent])->merge(
+                User::factory()->count(50)->student()->create()
+            );
 
             // ================================================================
             // 2. Categories (5)
@@ -390,6 +396,29 @@ class DatabaseSeeder extends Seeder
 
             // Ensure active enrollments for first course (bug 3-3-1)
             $firstCourse = $courses->first();
+
+            // student@coursehub.com を first course に active 登録（bug 3-3-1 の再現用）
+            $fixedStudentFirstCourseEnrollment = $enrollments
+                ->where('user_id', $fixedStudent->id)
+                ->where('course_id', $firstCourse->id)
+                ->first();
+
+            if (! $fixedStudentFirstCourseEnrollment) {
+                $fixedStudentFirstCourseEnrollment = Enrollment::create([
+                    'user_id' => $fixedStudent->id,
+                    'course_id' => $firstCourse->id,
+                    'status' => 'active',
+                    'enrolled_at' => fake()->dateTimeBetween('-6 months', '-1 month'),
+                    'completed_at' => null,
+                ]);
+                $enrollments->push($fixedStudentFirstCourseEnrollment);
+            } elseif ($fixedStudentFirstCourseEnrollment->status !== 'active') {
+                $fixedStudentFirstCourseEnrollment->update([
+                    'status' => 'active',
+                    'completed_at' => null,
+                ]);
+            }
+
             $firstCourseActiveEnrollments = $enrollments
                 ->where('course_id', $firstCourse->id)
                 ->where('status', 'active');
@@ -439,12 +468,14 @@ class DatabaseSeeder extends Seeder
                 }
             }
 
-            // Bug 3-3-1: Force active students in first course to complete all published lessons
+            // Bug 3-3-1: Force active students in first course to complete all published lessons.
+            // student@coursehub.com を必ず含めて、教材通りのアカウントで進捗率バグを再現できるようにする
             $firstCoursePublishedLessons = ($courseLessonsMap[$firstCourse->id] ?? collect())
                 ->filter(fn ($l) => $l->is_published);
             $activeInFirstCourse = $enrollments
                 ->where('course_id', $firstCourse->id)
                 ->where('status', 'active')
+                ->sortByDesc(fn ($e) => $e->user_id === $fixedStudent->id ? 1 : 0)
                 ->take(2);
 
             foreach ($activeInFirstCourse as $enrollment) {
