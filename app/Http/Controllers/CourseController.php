@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
 use App\Models\Category;
+use App\Models\Course;
 use Illuminate\Http\Request;
 
 class CourseController extends Controller
@@ -18,7 +18,7 @@ class CourseController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -42,15 +42,19 @@ class CourseController extends Controller
         $this->authorize('view', $course);
 
         // コース関連データを一括取得
-        $course->load('chapters.lessons', 'user', 'category', 'tags');
+        $course->load('chapters.lessons', 'user', 'category', 'tags', 'reviews.user');
 
         $enrollment = null;
+        $userReview = null;
         if (auth()->user()->isStudent()) {
             $enrollment = $course->enrollments()
                 ->where('user_id', auth()->id())
                 ->first();
+
+            $userReview = $course->reviews
+                ->firstWhere('user_id', auth()->id());
         }
 
-        return view('courses.show', compact('course', 'enrollment'));
+        return view('courses.show', compact('course', 'enrollment', 'userReview'));
     }
 }

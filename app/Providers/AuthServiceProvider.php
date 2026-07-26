@@ -2,16 +2,26 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\Gate;
+use App\Models\Chapter;
+use App\Models\Course;
+use App\Models\Lesson;
+use App\Models\Quiz;
+use App\Models\Review;
+use App\Policies\ChapterPolicy;
+use App\Policies\CoursePolicy;
+use App\Policies\LessonPolicy;
+use App\Policies\QuizPolicy;
+use App\Policies\ReviewPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
-        \App\Models\Course::class => \App\Policies\CoursePolicy::class,
-        \App\Models\Chapter::class => \App\Policies\ChapterPolicy::class,
-        \App\Models\Lesson::class => \App\Policies\LessonPolicy::class,
-        \App\Models\Quiz::class => \App\Policies\QuizPolicy::class,
+        Course::class => CoursePolicy::class,
+        Chapter::class => ChapterPolicy::class,
+        Lesson::class => LessonPolicy::class,
+        Quiz::class => QuizPolicy::class,
+        Review::class => ReviewPolicy::class,
     ];
 
     public function boot(): void
