@@ -2,6 +2,13 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto">
+    @if(session('error'))
+        <div class="mb-6 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+            <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="text-sm font-medium">{{ session('error') }}</span>
+        </div>
+    @endif
+
     <div class="mb-6">
         <a href="{{ route('courses.show', $course) }}" class="inline-flex items-center text-sm text-gray-500 hover:text-indigo-600 transition-colors">
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -55,8 +62,41 @@
             @endforeach
         </div>
 
+        {{-- 受験履歴 --}}
+        <div class="mt-8">
+            <h2 class="text-lg font-semibold text-gray-900 mb-3">受験履歴</h2>
+            <div class="overflow-x-auto rounded-xl border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium text-gray-500">受験日時</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-500">スコア</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-500">結果</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        @foreach($submissions as $history)
+                            <tr>
+                                <td class="px-4 py-2 text-gray-700">{{ $history->submitted_at?->format('Y/m/d H:i') }}</td>
+                                <td class="px-4 py-2 font-medium text-gray-900">{{ $history->score }}%</td>
+                                <td class="px-4 py-2">
+                                    @if($history->score >= $quiz->passing_score)
+                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">合格</span>
+                                    @else
+                                        <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">不合格</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="mt-8 flex flex-wrap gap-3">
-            <a href="{{ route('courses.quizzes.show', [$course, $quiz]) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2.5 shadow-sm transition-all duration-150">再受験する</a>
+            @unless($hasPassed)
+                <a href="{{ route('courses.quizzes.show', [$course, $quiz]) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2.5 shadow-sm transition-all duration-150">再受験する</a>
+            @endunless
             <a href="{{ route('courses.show', $course) }}" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg px-4 py-2.5 transition-all duration-150">コースに戻る</a>
         </div>
     </div>

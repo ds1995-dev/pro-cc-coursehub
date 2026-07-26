@@ -14,6 +14,13 @@ class QuizController extends Controller
     {
         $this->authorize('view', $course);
 
+        // 合格済みの場合は再受験不可。結果画面へ誘導する
+        if (auth()->user()->cannot('submit', [Submission::class, $quiz])) {
+            return redirect()
+                ->route('courses.quizzes.result', [$course, $quiz])
+                ->with('error', 'この小テストは既に合格済みのため、再受験できません。');
+        }
+
         $quiz->load('questions.options');
 
         return view('quizzes.show', compact('course', 'quiz'));
@@ -21,6 +28,9 @@ class QuizController extends Controller
 
     public function submit(Request $request, Course $course, Quiz $quiz)
     {
+        // 合格済みの場合は再受験不可（SubmissionPolicy::submit）→ 403
+        $this->authorize('submit', [Submission::class, $quiz]);
+
         $answers = $request->input('answers', []);
 
         $correctCount = 0;
@@ -55,11 +65,18 @@ class QuizController extends Controller
 
         $quiz->load('questions.options');
 
-        $submission = Submission::where('user_id', auth()->id())
+        // 受験履歴（新しい順）。$submission は最新の受験結果
+        $submissions = Submission::where('user_id', auth()->id())
             ->where('quiz_id', $quiz->id)
             ->latest()
-            ->firstOrFail();
+            ->get();
 
-        return view('quizzes.result', compact('course', 'quiz', 'submission'));
+        abort_if($submissions->isEmpty(), 404);
+        $submission = $submissions->first();
+
+        // 合格済みなら再受験ボタンを表示しない
+        $hasPassed = $submissions->contains(fn ($s) => $s->score >= $quiz->passing_score);
+
+        return view('quizzes.result', compact('course', 'quiz', 'submission', 'submissions', 'hasPassed'));
     }
 }
