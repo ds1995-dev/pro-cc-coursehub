@@ -53,6 +53,23 @@ class Course extends Model
         return $this->belongsToMany(Tag::class, 'course_tag');
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function averageRating(): ?float
+    {
+        $average = $this->reviews->avg('rating');
+
+        return $average !== null ? round($average, 1) : null;
+    }
+
+    public function reviewsCount(): int
+    {
+        return $this->reviews->count();
+    }
+
     public function scopePublished($query)
     {
         return $query->where('status', 'published');

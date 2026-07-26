@@ -69,5 +69,102 @@
             </div>
         @endforeach
     </div>
+
+    {{-- レビュー --}}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mt-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">レビュー</h2>
+            @php($reviewsCount = $course->reviewsCount())
+            @if($reviewsCount > 0)
+                @php($averageRating = $course->averageRating())
+                <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <x-star-rating :value="round($averageRating)" />
+                    <span class="font-medium text-gray-900">{{ number_format($averageRating, 1) }}</span>
+                    <span>（{{ $reviewsCount }}件）</span>
+                </div>
+            @endif
+        </div>
+
+        @if(auth()->user()->isStudent())
+            @if($userReview)
+                {{-- 自分のレビュー（編集・削除） --}}
+                <div x-data="{ editing: false }" class="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50">
+                    <div x-show="!editing">
+                        <div class="flex items-center justify-between">
+                            <x-star-rating :value="$userReview->rating" />
+                            <div class="flex items-center gap-3">
+                                <button type="button" @click="editing = true" class="text-sm text-indigo-600 hover:text-indigo-700">編集</button>
+                                <form method="POST" action="{{ route('courses.reviews.destroy', [$course, $userReview]) }}" @submit="return confirm('レビューを削除しますか？')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-sm text-red-600 hover:text-red-700">削除</button>
+                                </form>
+                            </div>
+                        </div>
+                        @if($userReview->comment)
+                            <p class="text-gray-700 text-sm mt-2">{{ $userReview->comment }}</p>
+                        @endif
+                    </div>
+                    <form x-show="editing" method="POST" action="{{ route('courses.reviews.update', [$course, $userReview]) }}">
+                        @csrf
+                        @method('PUT')
+                        <div class="mb-3">
+                            <label for="edit_rating" class="block text-sm font-medium text-gray-700 mb-1">評価</label>
+                            <select name="rating" id="edit_rating" class="rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2 border">
+                                @for($i = 5; $i >= 1; $i--)
+                                    <option value="{{ $i }}" {{ (int) old('rating', $userReview->rating) === $i ? 'selected' : '' }}>{{ str_repeat('★', $i) }}（{{ $i }}）</option>
+                                @endfor
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_comment" class="block text-sm font-medium text-gray-700 mb-1">コメント（任意）</label>
+                            <textarea name="comment" id="edit_comment" rows="3" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2 border">{{ old('comment', $userReview->comment) }}</textarea>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2 text-sm shadow-sm">更新する</button>
+                            <button type="button" @click="editing = false" class="text-sm text-gray-600 hover:text-gray-800">キャンセル</button>
+                        </div>
+                    </form>
+                </div>
+            @elseif(auth()->user()->can('create', [App\Models\Review::class, $course]))
+                {{-- レビュー投稿フォーム --}}
+                <form method="POST" action="{{ route('courses.reviews.store', $course) }}" class="border border-gray-200 rounded-lg p-4 mb-6">
+                    @csrf
+                    <div class="mb-3">
+                        <label for="rating" class="block text-sm font-medium text-gray-700 mb-1">評価</label>
+                        <select name="rating" id="rating" class="rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2 border">
+                            @for($i = 5; $i >= 1; $i--)
+                                <option value="{{ $i }}" {{ (int) old('rating', 5) === $i ? 'selected' : '' }}>{{ str_repeat('★', $i) }}（{{ $i }}）</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comment" class="block text-sm font-medium text-gray-700 mb-1">コメント（任意）</label>
+                        <textarea name="comment" id="comment" rows="3" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2 border" placeholder="コースの感想を書きましょう">{{ old('comment') }}</textarea>
+                    </div>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2 text-sm shadow-sm">レビューを投稿</button>
+                </form>
+            @else
+                <p class="text-gray-500 text-sm mb-6">コースを受講完了するとレビューを投稿できます。</p>
+            @endif
+        @endif
+
+        {{-- レビュー一覧 --}}
+        @forelse($course->reviews->sortByDesc('created_at') as $review)
+            @continue($userReview && $review->id === $userReview->id)
+            <div class="border-t border-gray-100 py-4">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-900 text-sm">{{ $review->user->name }}</span>
+                    <span class="text-xs text-gray-400">{{ $review->created_at->format('Y/m/d') }}</span>
+                </div>
+                <x-star-rating :value="$review->rating" class="text-sm" />
+                @if($review->comment)
+                    <p class="text-gray-700 text-sm mt-1">{{ $review->comment }}</p>
+                @endif
+            </div>
+        @empty
+            <p class="text-gray-500 text-sm">まだレビューはありません。</p>
+        @endforelse
+    </div>
 </div>
 @endsection
