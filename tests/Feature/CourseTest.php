@@ -76,6 +76,26 @@ class CourseTest extends TestCase
         ]);
     }
 
+    public function test_coach_cannot_create_duplicate_title_course(): void
+    {
+        Course::factory()->create([
+            'user_id' => $this->coach->id,
+            'category_id' => $this->category->id,
+            'title' => '重複コース',
+        ]);
+
+        $response = $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => '重複コース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'draft',
+        ]);
+
+        $response->assertSessionHasErrors('title');
+        $this->assertEquals(1, Course::where('title', '重複コース')->count());
+    }
+
     public function test_coach_can_update_course(): void
     {
         $course = Course::factory()->create([

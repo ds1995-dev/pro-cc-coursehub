@@ -67,17 +67,6 @@ class CoachCourseController extends Controller
 
             $validated = $request->validated();
 
-            // タイトルの重複チェック（同じコーチ内で）
-            $existingCourse = Course::where('user_id', auth()->id())
-                ->where('title', $validated['title'])
-                ->first();
-
-            if ($existingCourse) {
-                return back()->withInput()->withErrors([
-                    'title' => '同じタイトルのコースが既に存在します。',
-                ]);
-            }
-
             // ============================================
             // 2. スラッグ生成
             // ============================================
