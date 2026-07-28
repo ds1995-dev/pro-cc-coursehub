@@ -78,6 +78,54 @@ class CourseTest extends TestCase
         ]);
     }
 
+    public function test_coach_can_create_course_syncs_existing_tags(): void
+    {
+        $tags = Tag::factory()->count(2)->create();
+
+        $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => '既存タグ紐付けコース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'draft',
+            'tags' => $tags->pluck('id')->toArray(),
+        ]);
+
+        $course = Course::where('title', '既存タグ紐付けコース')->firstOrFail();
+        $this->assertEqualsCanonicalizing(
+            $tags->pluck('id')->toArray(),
+            $course->tags->pluck('id')->toArray()
+        );
+    }
+
+    public function test_published_course_sets_published_at(): void
+    {
+        $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => '公開コース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'published',
+        ]);
+
+        $course = Course::where('title', '公開コース')->firstOrFail();
+        $this->assertNotNull($course->published_at);
+    }
+
+    public function test_draft_course_does_not_set_published_at(): void
+    {
+        $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => '下書きコース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'draft',
+        ]);
+
+        $course = Course::where('title', '下書きコース')->firstOrFail();
+        $this->assertNull($course->published_at);
+    }
+
     public function test_japanese_title_generates_non_empty_slug(): void
     {
         $this->actingAs($this->coach)->post('/coach/courses', [
