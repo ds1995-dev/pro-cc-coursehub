@@ -79,28 +79,10 @@ class CoachCourseController extends Controller
             $slug = $this->courseService->generateUniqueSlug($validated['title']);
 
             // ============================================
-            // 3. 画像アップロード処理
+            // 3. 画像アップロード処理（CourseService に委譲）
             // ============================================
 
-            $imagePath = null;
-
-            // 画像がアップロードされた場合の処理
-            if ($request->hasFile('image')) {
-                $image = $request->file('image');
-
-                // ファイル名を生成（ユニークにするため timestamp を付与）
-                $fileName = time().'_'.Str::random(10).'.'.$image->getClientOriginalExtension();
-
-                // storage/app/public/courses ディレクトリに保存
-                $imagePath = $image->storeAs('courses', $fileName, 'public');
-
-                // 保存に失敗した場合
-                if (! $imagePath) {
-                    return back()->withInput()->withErrors([
-                        'image' => '画像のアップロードに失敗しました。',
-                    ]);
-                }
-            }
+            $imagePath = $this->courseService->storeCourseImage($request->file('image'));
 
             // ============================================
             // 4. Course レコード作成

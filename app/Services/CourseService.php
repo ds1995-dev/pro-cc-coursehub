@@ -37,4 +37,27 @@ class CourseService
 
         return $slug;
     }
+
+    /**
+     * コース画像を保存し、保存先パスを返す。
+     * 画像が無い場合は null を返し、保存に失敗した場合は例外を投げる。
+     */
+    public function storeCourseImage(?UploadedFile $image): ?string
+    {
+        if ($image === null) {
+            return null;
+        }
+
+        // ファイル名を生成（ユニークにするため timestamp を付与）
+        $fileName = time().'_'.Str::random(10).'.'.$image->getClientOriginalExtension();
+
+        // storage/app/public/courses ディレクトリに保存
+        $imagePath = $image->storeAs('courses', $fileName, 'public');
+
+        if (! $imagePath) {
+            throw new \RuntimeException('画像のアップロードに失敗しました。');
+        }
+
+        return $imagePath;
+    }
 }
