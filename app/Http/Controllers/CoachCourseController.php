@@ -56,6 +56,9 @@ class CoachCourseController extends Controller
      */
     public function store(StoreCourseRequest $request)
     {
+        // 認可（try の外に置き、AuthorizationException を 403 として返す）
+        $this->authorize('create', Course::class);
+
         try {
 
             // ============================================
@@ -75,7 +78,6 @@ class CoachCourseController extends Controller
                 ]);
             }
 
-
             // ============================================
             // 2. スラッグ生成
             // ============================================
@@ -85,17 +87,16 @@ class CoachCourseController extends Controller
 
             // 空のスラッグ対策（日本語タイトルの場合）
             if (empty($slug)) {
-                $slug = 'course-' . time();
+                $slug = 'course-'.time();
             }
 
             // スラッグの重複チェック
             $originalSlug = $slug;
             $slugCount = 1;
             while (Course::where('slug', $slug)->exists()) {
-                $slug = $originalSlug . '-' . $slugCount;
+                $slug = $originalSlug.'-'.$slugCount;
                 $slugCount++;
             }
-
 
             // ============================================
             // 3. 画像アップロード処理
@@ -108,19 +109,18 @@ class CoachCourseController extends Controller
                 $image = $request->file('image');
 
                 // ファイル名を生成（ユニークにするため timestamp を付与）
-                $fileName = time() . '_' . Str::random(10) . '.' . $image->getClientOriginalExtension();
+                $fileName = time().'_'.Str::random(10).'.'.$image->getClientOriginalExtension();
 
                 // storage/app/public/courses ディレクトリに保存
                 $imagePath = $image->storeAs('courses', $fileName, 'public');
 
                 // 保存に失敗した場合
-                if (!$imagePath) {
+                if (! $imagePath) {
                     return back()->withInput()->withErrors([
                         'image' => '画像のアップロードに失敗しました。',
                     ]);
                 }
             }
-
 
             // ============================================
             // 4. Course レコード作成
@@ -139,7 +139,6 @@ class CoachCourseController extends Controller
                 'published_at' => null, // 後で設定する
             ]);
 
-
             // ============================================
             // 5. タグの同期（既存タグ + 新規タグ）
             // ============================================
@@ -148,7 +147,7 @@ class CoachCourseController extends Controller
             $tagIds = $validated['tags'] ?? [];
 
             // 新規タグが入力されている場合は作成して追加
-            if (!empty($validated['new_tags'])) {
+            if (! empty($validated['new_tags'])) {
                 $newTagNames = array_map('trim', explode(',', $validated['new_tags']));
 
                 foreach ($newTagNames as $tagName) {
@@ -163,17 +162,16 @@ class CoachCourseController extends Controller
                     );
 
                     // 重複しないようにIDを追加
-                    if (!in_array($tag->id, $tagIds)) {
+                    if (! in_array($tag->id, $tagIds)) {
                         $tagIds[] = $tag->id;
                     }
                 }
             }
 
             // pivot テーブルを同期
-            if (!empty($tagIds)) {
+            if (! empty($tagIds)) {
                 $course->tags()->sync($tagIds);
             }
-
 
             // ============================================
             // 6. 初期 Chapter の自動作成
@@ -186,7 +184,6 @@ class CoachCourseController extends Controller
                 'title' => 'はじめに',
                 'order' => 1,
             ]);
-
 
             // ============================================
             // 7. ステータスに応じた published_at の設定
@@ -201,7 +198,6 @@ class CoachCourseController extends Controller
 
             // 下書きの場合は published_at は null のまま
             // ※ archived は新規作成時には選択不可
-
 
             // ============================================
             // 8. リダイレクト
@@ -218,7 +214,7 @@ class CoachCourseController extends Controller
             // ============================================
 
             // ログにエラーを記録
-            \Log::error('コース作成エラー: ' . $e->getMessage(), [
+            \Log::error('コース作成エラー: '.$e->getMessage(), [
                 'user_id' => auth()->id(),
                 'request_data' => $request->except(['image']),
                 'trace' => $e->getTraceAsString(),
@@ -262,7 +258,7 @@ class CoachCourseController extends Controller
             'description' => $validated['description'],
             'difficulty' => $validated['difficulty'],
             'status' => $validated['status'],
-            'published_at' => $validated['status'] === 'published' && !$course->published_at ? now() : $course->published_at,
+            'published_at' => $validated['status'] === 'published' && ! $course->published_at ? now() : $course->published_at,
         ]);
 
         $course->tags()->sync($validated['tags'] ?? []);

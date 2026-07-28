@@ -14,7 +14,9 @@ class CourseTest extends TestCase
     use RefreshDatabase;
 
     private User $coach;
+
     private User $student;
+
     private Category $category;
 
     protected function setUp(): void
@@ -127,6 +129,20 @@ class CourseTest extends TestCase
         $response = $this->actingAs($this->student)->get('/coach/courses/create');
 
         $response->assertStatus(403);
+    }
+
+    public function test_student_cannot_store_course(): void
+    {
+        $response = $this->actingAs($this->student)->post('/coach/courses', [
+            'title' => 'テストコース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'draft',
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('courses', ['title' => 'テストコース']);
     }
 
     public function test_course_list_can_be_filtered_by_category(): void
