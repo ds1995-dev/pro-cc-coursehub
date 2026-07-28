@@ -1,9 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(php artisan *)",
-      "Bash(composer *)",
-      "Bash(npm *)"
+      "Bash(./vendor/bin/sail *)",
+      "Bash(git *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$(jq -r '.tool_input.file_path // .tool_response.filePath // empty')\"; case \"$f\" in *.blade.php) ;; *.php) ./vendor/bin/sail exec laravel.test ./vendor/bin/pint \"${f#$PWD/}\" ;; esac 2>/dev/null || true",
+            "statusMessage": "Running Pint on edited PHP file",
+            "timeout": 60
+          }
+        ]
+      }
     ]
   }
 }

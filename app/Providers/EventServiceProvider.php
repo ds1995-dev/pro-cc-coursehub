@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Events\CourseCompleted;
+use App\Events\CourseCreated;
+use App\Listeners\CreateInitialChapter;
 use App\Listeners\UpdateEnrollmentStatus;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -22,6 +24,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         CourseCompleted::class => [
             UpdateEnrollmentStatus::class,
+        ],
+        CourseCreated::class => [
+            CreateInitialChapter::class,
         ],
     ];
 

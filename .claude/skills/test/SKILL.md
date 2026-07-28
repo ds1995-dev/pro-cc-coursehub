@@ -6,5 +6,5 @@ description: テストを実行する
 テストを実行してください。
 
 ```bash
-php artisan test
+./vendor/bin/sail test
 ```
