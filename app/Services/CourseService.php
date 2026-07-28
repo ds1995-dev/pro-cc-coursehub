@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\CourseCreated;
 use App\Models\Course;
 use App\Models\Tag;
 use App\Models\User;
@@ -116,7 +117,7 @@ class CourseService
         $imagePath = $this->storeCourseImage($validated['image'] ?? null);
 
         try {
-            return DB::transaction(function () use ($coach, $validated, $imagePath) {
+            $course = DB::transaction(function () use ($coach, $validated, $imagePath) {
                 $course = Course::create([
                     'user_id' => $coach->id,
                     'category_id' => $validated['category_id'],
@@ -136,12 +137,6 @@ class CourseService
                     $course->tags()->sync($tagIds);
                 }
 
-                // 初期チャプターの自動作成（すぐにレッスンを追加できるように）
-                $course->chapters()->create([
-                    'title' => 'はじめに',
-                    'order' => 1,
-                ]);
-
                 return $course;
             });
         } catch (\Throwable $e) {
@@ -151,5 +146,10 @@ class CourseService
 
             throw $e;
         }
+
+        // 作成後の副作用（初期チャプター生成など）はイベントで処理する
+        event(new CourseCreated($course));
+
+        return $course;
     }
 }

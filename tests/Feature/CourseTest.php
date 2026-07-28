@@ -76,6 +76,24 @@ class CourseTest extends TestCase
         ]);
     }
 
+    public function test_course_creation_creates_initial_chapter(): void
+    {
+        $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => 'チャプター付きコース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'draft',
+        ]);
+
+        $course = Course::where('title', 'チャプター付きコース')->firstOrFail();
+        $this->assertDatabaseHas('chapters', [
+            'course_id' => $course->id,
+            'title' => 'はじめに',
+            'order' => 1,
+        ]);
+    }
+
     public function test_coach_can_create_course_with_new_tags(): void
     {
         $response = $this->actingAs($this->coach)->post('/coach/courses', [
