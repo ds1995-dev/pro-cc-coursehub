@@ -7,6 +7,8 @@ use App\Models\Course;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CourseTest extends TestCase
@@ -74,6 +76,39 @@ class CourseTest extends TestCase
             'title' => 'テストコース',
             'user_id' => $this->coach->id,
         ]);
+    }
+
+    public function test_japanese_title_generates_non_empty_slug(): void
+    {
+        $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => '日本語タイトル',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'draft',
+        ]);
+
+        $course = Course::where('title', '日本語タイトル')->firstOrFail();
+        $this->assertNotEmpty($course->slug);
+        $this->assertStringStartsWith('course-', $course->slug);
+    }
+
+    public function test_coach_can_create_course_with_image(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => '画像付きコース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'draft',
+            'image' => UploadedFile::fake()->image('cover.jpg'),
+        ]);
+
+        $course = Course::where('title', '画像付きコース')->firstOrFail();
+        $this->assertNotNull($course->image_path);
+        Storage::disk('public')->assertExists($course->image_path);
     }
 
     public function test_course_creation_creates_initial_chapter(): void
