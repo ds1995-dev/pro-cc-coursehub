@@ -3,7 +3,11 @@
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\Tag;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -97,5 +101,55 @@ class CourseService
         }
 
         return $tagIds;
+    }
+
+    /**
+     * コースを作成する一連の処理をまとめて実行する。
+     *
+     * 画像保存 → Course 作成 → タグ同期 → 初期チャプター作成までを行う。
+     * DB 書き込みは単一トランザクションで原子的に処理し、ロールバック時は
+     * アップロード済み画像（filesystem は非トランザクション）を削除する。
+     */
+    public function createForCoach(User $coach, array $validated): Course
+    {
+        // 画像はトランザクション外で先に保存し、DB ロールバック時に削除する
+        $imagePath = $this->storeCourseImage($validated['image'] ?? null);
+
+        try {
+            return DB::transaction(function () use ($coach, $validated, $imagePath) {
+                $course = Course::create([
+                    'user_id' => $coach->id,
+                    'category_id' => $validated['category_id'],
+                    'title' => $validated['title'],
+                    'slug' => $this->generateUniqueSlug($validated['title']),
+                    'description' => $validated['description'],
+                    'difficulty' => $validated['difficulty'],
+                    'image_path' => $imagePath,
+                    'status' => $validated['status'],
+                    // 公開ステータスの場合のみ公開日時を設定（archived は新規作成不可）
+                    'published_at' => $validated['status'] === 'published' ? now() : null,
+                ]);
+
+                // タグの同期（既存タグ + 新規タグ）
+                $tagIds = $this->resolveTagIds($validated);
+                if (! empty($tagIds)) {
+                    $course->tags()->sync($tagIds);
+                }
+
+                // 初期チャプターの自動作成（すぐにレッスンを追加できるように）
+                $course->chapters()->create([
+                    'title' => 'はじめに',
+                    'order' => 1,
+                ]);
+
+                return $course;
+            });
+        } catch (\Throwable $e) {
+            if ($imagePath !== null) {
+                Storage::disk('public')->delete($imagePath);
+            }
+
+            throw $e;
+        }
     }
 }

@@ -76,6 +76,29 @@ class CourseTest extends TestCase
         ]);
     }
 
+    public function test_coach_can_create_course_with_new_tags(): void
+    {
+        $response = $this->actingAs($this->coach)->post('/coach/courses', [
+            'title' => '新規タグコース',
+            'category_id' => $this->category->id,
+            'description' => 'テストコースの説明文です。',
+            'difficulty' => 'beginner',
+            'status' => 'published',
+            'new_tags' => 'PHP, Laravel',
+        ]);
+
+        $response->assertRedirect('/coach/courses');
+
+        $course = Course::where('title', '新規タグコース')->firstOrFail();
+        $this->assertNotNull($course->published_at);
+        $this->assertDatabaseHas('tags', ['name' => 'PHP']);
+        $this->assertDatabaseHas('tags', ['name' => 'Laravel']);
+        $this->assertEqualsCanonicalizing(
+            ['PHP', 'Laravel'],
+            $course->tags->pluck('name')->toArray()
+        );
+    }
+
     public function test_coach_cannot_create_duplicate_title_course(): void
     {
         Course::factory()->create([

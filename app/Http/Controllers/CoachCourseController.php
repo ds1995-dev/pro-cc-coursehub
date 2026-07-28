@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCourseRequest;
 use App\Models\Category;
-use App\Models\Chapter;
 use App\Models\Course;
 use App\Models\Tag;
 use App\Services\CourseService;
@@ -53,10 +52,8 @@ class CoachCourseController extends Controller
     /**
      * コース新規作成処理
      *
-     * バリデーション、スラッグ生成、画像アップロード、タグ同期、
-     * 初期チャプター作成などを全て行う
-     *
-     * TODO: 画像処理をServiceに移動
+     * バリデーションは StoreCourseRequest、永続化ロジック（スラッグ生成・
+     * 画像アップロード・タグ同期・初期チャプター作成）は CourseService に委譲する。
      */
     public function store(StoreCourseRequest $request)
     {
@@ -64,105 +61,21 @@ class CoachCourseController extends Controller
         $this->authorize('create', Course::class);
 
         try {
-
-            // ============================================
-            // 1. バリデーション（StoreCourseRequest に委譲）
-            // ============================================
-
-            $validated = $request->validated();
-
-            // ============================================
-            // 2. スラッグ生成（CourseService に委譲）
-            // ============================================
-
-            $slug = $this->courseService->generateUniqueSlug($validated['title']);
-
-            // ============================================
-            // 3. 画像アップロード処理（CourseService に委譲）
-            // ============================================
-
-            $imagePath = $this->courseService->storeCourseImage($request->file('image'));
-
-            // ============================================
-            // 4. Course レコード作成
-            // ============================================
-
-            // コースをデータベースに保存
-            $course = Course::create([
-                'user_id' => auth()->id(),
-                'category_id' => $validated['category_id'],
-                'title' => $validated['title'],
-                'slug' => $slug,
-                'description' => $validated['description'],
-                'difficulty' => $validated['difficulty'],
-                'image_path' => $imagePath,
-                'status' => $validated['status'],
-                'published_at' => null, // 後で設定する
-            ]);
-
-            // ============================================
-            // 5. タグの同期（既存タグ + 新規タグ / CourseService に委譲）
-            // ============================================
-
-            $tagIds = $this->courseService->resolveTagIds($validated);
-
-            // pivot テーブルを同期
-            if (! empty($tagIds)) {
-                $course->tags()->sync($tagIds);
-            }
-
-            // ============================================
-            // 6. 初期 Chapter の自動作成
-            // ============================================
-
-            // コース作成時に最初のチャプターを自動生成
-            // これにより、コーチがすぐにレッスンを追加できる
-            Chapter::create([
-                'course_id' => $course->id,
-                'title' => 'はじめに',
-                'order' => 1,
-            ]);
-
-            // ============================================
-            // 7. ステータスに応じた published_at の設定
-            // ============================================
-
-            // 公開ステータスの場合は公開日時を設定
-            if ($validated['status'] === 'published') {
-                $course->update([
-                    'published_at' => now(),
-                ]);
-            }
-
-            // 下書きの場合は published_at は null のまま
-            // ※ archived は新規作成時には選択不可
-
-            // ============================================
-            // 8. リダイレクト
-            // ============================================
-
-            // コース一覧にリダイレクト（成功メッセージ付き）
-            return redirect()->route('coach.courses.index')
-                ->with('success', 'コースを作成しました。');
-
+            $this->courseService->createForCoach(auth()->user(), $request->validated());
         } catch (\Exception $e) {
-
-            // ============================================
-            // 9. エラーハンドリング
-            // ============================================
-
-            // ログにエラーを記録
             \Log::error('コース作成エラー: '.$e->getMessage(), [
                 'user_id' => auth()->id(),
                 'request_data' => $request->except(['image']),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            // エラーメッセージを表示して入力フォームに戻す
             return back()->withInput()->withErrors([
                 'error' => 'コースの作成中にエラーが発生しました。もう一度お試しください。',
             ]);
         }
+
+        return redirect()->route('coach.courses.index')
+            ->with('success', 'コースを作成しました。');
     }
 
     public function edit(Course $course)
