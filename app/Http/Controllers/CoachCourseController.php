@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCourseRequest;
+use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Category;
 use App\Models\Course;
 use App\Models\Tag;
 use App\Services\CourseService;
-use Illuminate\Http\Request;
 
 class CoachCourseController extends Controller
 {
@@ -89,19 +89,11 @@ class CoachCourseController extends Controller
         return view('coach.courses.edit', compact('course', 'categories', 'tags'));
     }
 
-    public function update(Request $request, Course $course)
+    public function update(UpdateCourseRequest $request, Course $course)
     {
         $this->authorize('update', $course);
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'category_id' => ['required', 'exists:categories,id'],
-            'description' => ['required', 'string'],
-            'difficulty' => ['required', 'in:beginner,intermediate,advanced'],
-            'status' => ['required', 'in:draft,published,archived'],
-            'tags' => ['nullable', 'array'],
-            'tags.*' => ['exists:tags,id'],
-        ]);
+        $validated = $request->validated();
 
         $course->update([
             'title' => $validated['title'],

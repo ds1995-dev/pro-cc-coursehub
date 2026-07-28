@@ -194,6 +194,81 @@ class CourseTest extends TestCase
         ]);
     }
 
+    public function test_coach_can_update_course_keeping_same_title(): void
+    {
+        $course = Course::factory()->create([
+            'user_id' => $this->coach->id,
+            'category_id' => $this->category->id,
+            'title' => '同じタイトル',
+        ]);
+
+        $response = $this->actingAs($this->coach)->put("/coach/courses/{$course->id}", [
+            'title' => '同じタイトル',
+            'category_id' => $this->category->id,
+            'description' => '更新された説明文です。',
+            'difficulty' => 'intermediate',
+            'status' => 'draft',
+        ]);
+
+        $response->assertRedirect('/coach/courses');
+        $this->assertDatabaseHas('courses', [
+            'id' => $course->id,
+            'title' => '同じタイトル',
+            'description' => '更新された説明文です。',
+        ]);
+    }
+
+    public function test_coach_cannot_update_course_to_duplicate_title(): void
+    {
+        Course::factory()->create([
+            'user_id' => $this->coach->id,
+            'category_id' => $this->category->id,
+            'title' => '既存コース',
+        ]);
+        $course = Course::factory()->create([
+            'user_id' => $this->coach->id,
+            'category_id' => $this->category->id,
+            'title' => '編集対象コース',
+        ]);
+
+        $response = $this->actingAs($this->coach)->put("/coach/courses/{$course->id}", [
+            'title' => '既存コース',
+            'category_id' => $this->category->id,
+            'description' => '更新された説明文です。',
+            'difficulty' => 'intermediate',
+            'status' => 'draft',
+        ]);
+
+        $response->assertSessionHasErrors('title');
+        $this->assertDatabaseHas('courses', [
+            'id' => $course->id,
+            'title' => '編集対象コース',
+        ]);
+    }
+
+    public function test_coach_can_update_course_to_archived(): void
+    {
+        $course = Course::factory()->create([
+            'user_id' => $this->coach->id,
+            'category_id' => $this->category->id,
+            'status' => 'published',
+        ]);
+
+        $response = $this->actingAs($this->coach)->put("/coach/courses/{$course->id}", [
+            'title' => $course->title,
+            'category_id' => $this->category->id,
+            'description' => '更新された説明文です。',
+            'difficulty' => 'intermediate',
+            'status' => 'archived',
+        ]);
+
+        $response->assertRedirect('/coach/courses');
+        $this->assertDatabaseHas('courses', [
+            'id' => $course->id,
+            'status' => 'archived',
+        ]);
+    }
+
     public function test_coach_can_delete_own_course(): void
     {
         $course = Course::factory()->create([
