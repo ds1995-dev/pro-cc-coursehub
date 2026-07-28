@@ -12,7 +12,10 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         // Get published courses for the listing page
-        $query = Course::where('status', 'published');
+        // N+1 回避: category/user は Eager Load、件数のみ使う chapters/enrollments は集計
+        $query = Course::where('status', 'published')
+            ->with(['category', 'user'])
+            ->withCount(['chapters', 'enrollments']);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
