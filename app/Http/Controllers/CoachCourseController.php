@@ -7,11 +7,16 @@ use App\Models\Category;
 use App\Models\Chapter;
 use App\Models\Course;
 use App\Models\Tag;
+use App\Services\CourseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class CoachCourseController extends Controller
 {
+    public function __construct(
+        private CourseService $courseService
+    ) {}
+
     public function index()
     {
         $courses = Course::where('user_id', auth()->id())
@@ -68,24 +73,10 @@ class CoachCourseController extends Controller
             $validated = $request->validated();
 
             // ============================================
-            // 2. スラッグ生成
+            // 2. スラッグ生成（CourseService に委譲）
             // ============================================
 
-            // タイトルからスラッグを生成
-            $slug = Str::slug($validated['title']);
-
-            // 空のスラッグ対策（日本語タイトルの場合）
-            if (empty($slug)) {
-                $slug = 'course-'.time();
-            }
-
-            // スラッグの重複チェック
-            $originalSlug = $slug;
-            $slugCount = 1;
-            while (Course::where('slug', $slug)->exists()) {
-                $slug = $originalSlug.'-'.$slugCount;
-                $slugCount++;
-            }
+            $slug = $this->courseService->generateUniqueSlug($validated['title']);
 
             // ============================================
             // 3. 画像アップロード処理
