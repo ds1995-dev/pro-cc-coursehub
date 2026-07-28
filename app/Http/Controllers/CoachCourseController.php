@@ -9,7 +9,6 @@ use App\Models\Course;
 use App\Models\Tag;
 use App\Services\CourseService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class CoachCourseController extends Controller
 {
@@ -102,33 +101,10 @@ class CoachCourseController extends Controller
             ]);
 
             // ============================================
-            // 5. タグの同期（既存タグ + 新規タグ）
+            // 5. タグの同期（既存タグ + 新規タグ / CourseService に委譲）
             // ============================================
 
-            // 既存タグのIDリスト
-            $tagIds = $validated['tags'] ?? [];
-
-            // 新規タグが入力されている場合は作成して追加
-            if (! empty($validated['new_tags'])) {
-                $newTagNames = array_map('trim', explode(',', $validated['new_tags']));
-
-                foreach ($newTagNames as $tagName) {
-                    if (empty($tagName)) {
-                        continue;
-                    }
-
-                    // 既存のタグを検索、なければ新規作成
-                    $tag = Tag::firstOrCreate(
-                        ['slug' => Str::slug($tagName)],
-                        ['name' => $tagName]
-                    );
-
-                    // 重複しないようにIDを追加
-                    if (! in_array($tag->id, $tagIds)) {
-                        $tagIds[] = $tag->id;
-                    }
-                }
-            }
+            $tagIds = $this->courseService->resolveTagIds($validated);
 
             // pivot テーブルを同期
             if (! empty($tagIds)) {

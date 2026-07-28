@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Course;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 /**
@@ -59,5 +60,42 @@ class CourseService
         }
 
         return $imagePath;
+    }
+
+    /**
+     * 既存タグ（tags）と新規タグ（new_tags, カンマ区切り）を解決し、
+     * 同期対象のタグ ID 配列を返す。新規タグは firstOrCreate で作成する。
+     *
+     * @param  array  $validated  バリデーション済みの入力値
+     * @return array<int> タグ ID の配列
+     */
+    public function resolveTagIds(array $validated): array
+    {
+        // 既存タグのIDリスト
+        $tagIds = $validated['tags'] ?? [];
+
+        // 新規タグが入力されている場合は作成して追加
+        if (! empty($validated['new_tags'])) {
+            $newTagNames = array_map('trim', explode(',', $validated['new_tags']));
+
+            foreach ($newTagNames as $tagName) {
+                if (empty($tagName)) {
+                    continue;
+                }
+
+                // 既存のタグを検索、なければ新規作成
+                $tag = Tag::firstOrCreate(
+                    ['slug' => Str::slug($tagName)],
+                    ['name' => $tagName]
+                );
+
+                // 重複しないようにIDを追加
+                if (! in_array($tag->id, $tagIds)) {
+                    $tagIds[] = $tag->id;
+                }
+            }
+        }
+
+        return $tagIds;
     }
 }
