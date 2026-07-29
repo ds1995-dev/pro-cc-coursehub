@@ -30,7 +30,7 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500">{{ $student->email }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500">{{ $student->enrollments->count() }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">{{ $student->enrollments_count }}</td>
                             <td class="px-6 py-4 text-sm text-gray-500">{{ $student->created_at->format('Y/m/d') }}</td>
                         </tr>
                     @endforeach
