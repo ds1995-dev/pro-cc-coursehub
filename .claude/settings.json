@@ -1,4 +1,5 @@
 {
+  "includeCoAuthoredBy": true,
   "permissions": {
     "allow": [
       "Bash(./vendor/bin/sail *)",
